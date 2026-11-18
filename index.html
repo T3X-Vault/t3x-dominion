@@ -1,476 +1,564 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>T3x Dominion | Presented by Futuret3Ch</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: #05070a;
-      color: #e8f4ff;
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      overflow: hidden;
-      height: 100vh;
-      height: 100dvh;
-    }
-    #gameCanvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-      touch-action: none;
-    }
-    #ui { position: absolute; inset: 0; pointer-events: none; }
-    #ui * { pointer-events: auto; }
-    .panel {
-      background: rgba(8, 14, 28, 0.85);
-      border: 1px solid rgba(0, 220, 255, 0.4);
-      border-radius: 12px;
-      padding: 10px 14px;
-      backdrop-filter: blur(12px);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-    }
-    #hud {
-      position: absolute;
-      top: 8px; left: 8px; right: 8px;
-      display: flex; justify-content: space-between; flex-wrap: wrap;
-      gap: 6px;
-      font-size: 13px;
-      font-weight: 500;
-    }
-    #log {
-      position: absolute;
-      bottom: 110px; left: 8px;
-      width: min(300px, 65vw);
-      max-height: 90px;
-      overflow-y: auto;
-      font-size: 11px;
-      line-height: 1.3;
-    }
-    #actions {
-      position: absolute;
-      bottom: 8px; left: 8px; right: 8px;
-      display: flex; flex-wrap: wrap; gap: 5px;
-      justify-content: center;
-    }
-    button {
-      background: linear-gradient(135deg, #00d4ff, #0099ff);
-      border: none;
-      color: #fff;
-      padding: 9px 12px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 12px;
-      cursor: pointer;
-      box-shadow: 0 3px 10px rgba(0, 180, 255, 0.3);
-      flex: 1 1 auto;
-      min-width: 110px;
-    }
-    button:active { transform: scale(0.97); }
-    #trailer {
-      position: absolute;
-      inset: 0;
-      background: #000;
-      z-index: 100;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      transition: opacity 0.7s ease;
-      text-align: center;
-      padding: 16px;
-    }
-    #trailer.hidden { opacity: 0; pointer-events: none; }
-    .logo {
-      font-size: clamp(32px, 9vw, 64px);
-      font-weight: 900;
-      background: linear-gradient(90deg, #00f0ff, #b56cff);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      margin-bottom: 8px;
-    }
-    .subtitle { font-size: clamp(14px, 3.5vw, 20px); color: #aab; margin-bottom: 20px; }
-    .presented { font-size: clamp(11px, 2.8vw, 15px); color: #00e5ff; letter-spacing: 1.5px; text-transform: uppercase; }
-    @media (max-width: 600px) {
-      #log { bottom: 130px; }
-      button { min-width: 100px; padding: 10px 8px; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>T3x Dominion | Presented by Futuret3Ch</title>
+<meta name="description" content="Hold half the hex grid. A wartime strategy game presented by Futuret3Ch.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #07090c; --surface: #10161c; --surface-2: #18222b;
+    --fg: #e7eef4; --muted: #93a4b5;
+    --player: #2ee6c7; --player-dim: #123f38;
+    --enemy: #ff4d6a; --enemy-dim: #3d1822;
+    --gold: #e2b657; --line: #2c3b49; --neutral: #141b22;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: "IBM Plex Sans", system-ui, sans-serif; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:disabled { cursor: default; opacity: 0.5; }
+  .app { height: 100dvh; display: flex; flex-direction: column; }
+  header { border-bottom: 1px solid var(--line); background: var(--surface); padding: 8px 12px 10px; }
+  .top { display: flex; align-items: center; gap: 10px; }
+  h1 { font-family: Oswald, sans-serif; font-size: 20px; letter-spacing: 0.04em; margin: 0; font-weight: 600; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .tools { margin-left: auto; display: flex; gap: 8px; }
+  .ghost { min-height: 44px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); padding: 0 12px; }
+  .scores { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; margin-top: 8px; }
+  .you { color: var(--player); } .them { color: var(--enemy); } .mid { color: var(--muted); }
+  .bar { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-top: 4px; }
+  .bar i { display: block; height: 100%; background: var(--player); }
+  .bar.thin { height: 4px; } .bar.thin i { background: var(--enemy); }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; color: var(--muted); font-size: 13px; }
+  .swatch { width: 12px; height: 12px; display: inline-block; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+  .say { margin: 8px 0 0; border-radius: 8px; padding: 8px 10px; font-size: 14px; line-height: 1.35; background: var(--bg); }
+  .say.flash { background: var(--surface-2); color: var(--gold); }
+  .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .board-wrap { position: relative; flex: 1; min-height: 180px; background: var(--bg); }
+  .board-wrap.zoom { overflow: auto; }
+  svg.board { width: 100%; height: 100%; display: block; }
+  .board-wrap.zoom svg.board { width: 170%; height: 170%; }
+  .banner { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); background: var(--enemy-dim); border-radius: 999px; padding: 8px 14px; font-size: 14px; pointer-events: none; }
+  .brief { position: absolute; inset: 0; display: flex; justify-content: center; align-items: flex-start; padding: 12px; overflow: auto; pointer-events: none; }
+  .card { pointer-events: auto; width: min(440px, 100%); background: rgba(16, 22, 28, 0.96); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+  .kicker { color: var(--player); letter-spacing: 0.14em; text-transform: uppercase; font-size: 12px; }
+  .card h2 { font-family: Oswald, sans-serif; font-size: 32px; margin: 4px 0; letter-spacing: 0.04em; font-weight: 600; }
+  .card ol { margin: 12px 0; padding-left: 18px; font-size: 14px; line-height: 1.4; }
+  .card li { margin: 8px 0; }
+  .go { width: 100%; min-height: 48px; border: 0; border-radius: 12px; background: var(--player); color: var(--bg); font-family: Oswald, sans-serif; font-size: 20px; letter-spacing: 0.04em; }
+  .dock { max-height: 42vh; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); background: var(--surface); padding: 10px 12px 12px; }
+  .scroll { overflow: auto; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+  .grid2 { display: grid; grid-cols: 2; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .box { background: var(--bg); border-radius: 12px; padding: 8px 10px; }
+  .box p { margin: 0; }
+  .num { font-family: Oswald, sans-serif; font-size: 28px; line-height: 1; color: var(--gold); }
+  .num.plain { color: var(--fg); }
+  .muted { color: var(--muted); font-size: 13px; }
+  .read { background: var(--bg); border-radius: 12px; padding: 8px 10px; font-size: 14px; line-height: 1.35; }
+  .unitbtn { min-height: 44px; text-align: left; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); padding: 8px; }
+  .unitbtn.on { border-color: var(--player); background: var(--player-dim); }
+  .unitbtn b { display: block; font-size: 14px; }
+  .end { min-height: 52px; border: 0; border-radius: 12px; background: var(--player); color: var(--bg); text-align: left; padding: 8px 12px; }
+  .end strong { font-family: Oswald, sans-serif; font-size: 18px; letter-spacing: 0.04em; display: block; }
+  .log { margin: 0; padding: 0; list-style: none; font-size: 13px; }
+  .log li { margin: 4px 0; }
+  .modal { position: absolute; inset: 0; background: rgba(7,9,12,.82); overflow: auto; padding: 16px; z-index: 5; }
+  .help { max-width: 560px; margin: 0 auto; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+  .help h2 { font-family: Oswald, sans-serif; margin: 0; letter-spacing: 0.03em; }
+  .help h3 { margin: 14px 0 4px; font-size: 15px; }
+  .row { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  @media (min-width: 960px) {
+    .stage { flex-direction: row; }
+    .dock { max-height: none; width: 360px; border-top: 0; border-left: 1px solid var(--line); }
+  }
+  @keyframes pulse { 50% { opacity: .45 } }
+  @media (prefers-reduced-motion: no-preference) { .hint { animation: pulse 1.5s ease-in-out infinite; } }
+</style>
 </head>
 <body>
-  <canvas id="gameCanvas"></canvas>
-  <div id="trailer">
-    <div class="logo">T3X DOMINION</div>
-    <div class="subtitle">Wartime Strategy on the Grid</div>
-    <div class="presented">Presented by Futuret3Ch & the T3x Ecosystem</div>
-    <div style="margin-top: 28px; font-size: 12px; color: #556;">Tap or press any key to begin</div>
-  </div>
-  <div id="ui">
-    <div id="hud" class="panel">
-      <div>Energy <span id="energy">150</span></div>
-      <div>Data <span id="data">40</span></div>
-      <div>Turn <span id="turn">1</span></div>
-      <div>Territory <span id="territory">4</span></div>
-      <div>Units <span id="units">2</span></div>
+<div class="app">
+  <header>
+    <div class="top">
+      <div>
+        <h1>T3X DOMINION</h1>
+        <div class="sub" id="turnline">Turn 1 · Futuret3Ch</div>
+      </div>
+      <div class="tools">
+        <button class="ghost" id="zoomBtn" type="button">Bigger</button>
+        <button class="ghost" id="helpBtn" type="button">How to play</button>
+      </div>
     </div>
-    <div id="log" class="panel"></div>
-    <div id="actions">
-      <button onclick="endTurn()">End Turn</button>
-      <button onclick="spawnUnit('scout')">Scout (25E)</button>
-      <button onclick="spawnUnit('defender')">Defender (40E)</button>
-      <button onclick="spawnUnit('attacker')">Attacker (60E)</button>
-      <button onclick="spawnUnit('artillery')">Artillery (80E)</button>
+    <div class="scores">
+      <span class="you" id="youScore">You 3 / 31</span>
+      <span class="mid">Own 31 of 61 to win</span>
+      <span class="them" id="themScore">Enemy 3 / 31</span>
     </div>
+    <div class="bar"><i id="youBar" style="width:10%"></i></div>
+    <div class="bar thin"><i id="themBar" style="width:10%"></i></div>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--player-dim);box-shadow:inset 0 0 0 1px var(--player)"></i>You</span>
+      <span><i class="swatch" style="background:var(--enemy-dim);box-shadow:inset 0 0 0 1px var(--enemy)"></i>Enemy</span>
+      <span><i class="swatch" style="background:var(--neutral);box-shadow:inset 0 0 0 1px var(--line)"></i>Open</span>
+      <span style="color:var(--gold)">◆ Relay · extra pay</span>
+    </div>
+    <p class="say" id="say"></p>
+  </header>
+  <div class="stage">
+    <div class="board-wrap" id="boardWrap">
+      <svg class="board" id="board" role="group" aria-label="Hex grid. You are at the bottom. The enemy is at the top."></svg>
+      <div class="banner" id="banner" hidden>Enemy turn — watch</div>
+      <div class="brief" id="brief">
+        <article class="card">
+          <div class="kicker">Presented by Futuret3Ch</div>
+          <h2>T3X DOMINION</h2>
+          <p class="muted">You are teal, at the bottom. The enemy is crimson, at the top.</p>
+          <ol>
+            <li><b class="you">1. Take ground.</b> Your Scout is already selected. Bright hexes are where it can walk. Grey or crimson land becomes yours.</li>
+            <li><b class="them">2. Red means attack.</b> Damage is fixed — an Attacker always hits for 28. Shots are not blocked.</li>
+            <li><b>3. One action, then End turn.</b> You get paid for land you hold. Then the enemy moves on the map.</li>
+            <li><b style="color:var(--gold)">4. Energy builds. Data repairs.</b> Gold diamonds are relays. Own half the map to win.</li>
+          </ol>
+          <button class="go" id="startBtn" type="button">Start — Scout is selected</button>
+        </article>
+      </div>
+    </div>
+    <aside class="dock" id="dock">
+      <div class="scroll">
+        <div class="grid2">
+          <div class="box"><p class="muted">Energy · builds units</p><p class="num" id="energy">55</p><p class="muted" id="energyNext">+20 at end of turn</p></div>
+          <div class="box"><p class="muted">Data · repairs only</p><p class="num plain" id="data">10</p><p class="muted" id="dataNext">+3 at end of turn</p></div>
+        </div>
+        <div class="read" id="read"></div>
+        <div class="grid2" id="builds"></div>
+        <div>
+          <div class="muted">What just happened</div>
+          <ul class="log" id="log"></ul>
+        </div>
+      </div>
+      <button class="end" id="endBtn" type="button"><strong id="endTitle">Waiting to start</strong><span id="endSub">Press Start. You are teal, at the bottom.</span></button>
+    </aside>
   </div>
+</div>
+<div class="modal" id="help" hidden>
+  <article class="help">
+    <div class="row"><h2>How this war works</h2><button class="ghost" id="closeHelp" type="button">Close</button></div>
+    <h3>The goal</h3>
+    <p class="muted">Own 31 hexes — half of 61. You also win if the enemy has no units and no land. You lose if they hit 31 first, or you lose both your army and your land.</p>
+    <h3>Colors</h3>
+    <p class="muted">Teal is yours, bottom of the map. Crimson is the enemy, at the top. Grey is nobody’s. A gold diamond is a relay.</p>
+    <h3>Your turn</h3>
+    <p class="muted">Bright hexes are legal moves. Red hexes are legal attacks. Each unit may move, attack, or repair once. New units can act the same turn. You cannot walk through a unit.</p>
+    <h3>Capturing</h3>
+    <p class="muted">Stepping onto grey or crimson ground makes it yours. Destroying a unit does not take the hex — step onto the empty hex afterwards.</p>
+    <h3>Energy and Data</h3>
+    <p class="muted">Energy pays for units. Data only pays for repairs. Repair restores up to 40 health, costs 10 Data, and uses that unit’s action. End of turn pay: 8 Energy + 4 per hex + 12 per relay, and 3 Data + 2 per relay.</p>
+    <h3>Units — both sides use these</h3>
+    <p class="muted">Scout, 20 Energy. Health 40. Damage 12. Walks 2. Fragile land-grabber.<br>Defender, 35. Health 110. Damage 10. Walks 1. A wall.<br>Attacker, 50. Health 75. Damage 28. Must stand next to them.<br>Artillery, 65. Health 50. Damage 34. Shoots 2 hexes away, through other units.</p>
+    <h3>Enemy turn</h3>
+    <p class="muted">After you end the turn, their units move one at a time and the log says what they did.</p>
+  </article>
+</div>
+<script>
+const RADIUS = 4, REPAIR_COST = 10, REPAIR_HEAL = 40, SIZE = 30;
+const STATS = {
+  scout: { name: "Scout", cost: 20, hp: 40, atk: 12, range: 1, move: 2, role: "Moves 2 hexes. The cheap way to grab land. Fragile in a fight.", short: "Walks 2. Grabs land." },
+  defender: { name: "Defender", cost: 35, hp: 110, atk: 10, range: 1, move: 1, role: "A wall. Very hard to kill, weak punch. Park it on land you must keep.", short: "Tough. Holds a hex." },
+  attacker: { name: "Attacker", cost: 50, hp: 75, atk: 28, range: 1, move: 1, role: "Your fighter. Must stand next to an enemy. Always hits for 28.", short: "Hits for 28, up close." },
+  artillery: { name: "Artillery", cost: 65, hp: 50, atk: 34, range: 2, move: 1, role: "Shoots up to 2 hexes away, through other units. Keep it behind a Defender.", short: "Shoots 2 hexes away." }
+};
+const KINDS = ["scout", "defender", "attacker", "artillery"];
+const DIRS = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+const key = (q, r) => q + "," + r;
+const dist = (a, b) => Math.max(Math.abs(a.q - b.q), Math.abs(a.r - b.r), Math.abs(a.q + a.r - b.q - b.r));
+const pix = (q, r) => ({ x: SIZE * Math.sqrt(3) * (q + r / 2), y: SIZE * 1.5 * r });
+let S = null, flashTimer = 0, enemyTimer = 0;
 
-  <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    let width, height, hexSize = 28;
-    const MAP_RADIUS = 10;
+function create() {
+  const tiles = {};
+  for (let q = -RADIUS; q <= RADIUS; q++) for (let r = -RADIUS; r <= RADIUS; r++) if (Math.abs(q + r) <= RADIUS) tiles[key(q, r)] = { q, r, owner: null, relay: false, unitId: null };
+  const claim = (coords, owner) => coords.forEach(([q, r]) => { tiles[key(q, r)].owner = owner; });
+  claim([[0,3],[1,3],[-1,4]], "player");
+  claim([[0,-3],[-1,-3],[1,-4]], "enemy");
+  [[0,0],[2,-1],[-2,1],[3,0],[-3,0]].forEach(([q, r]) => { tiles[key(q, r)].relay = true; });
+  const units = {};
+  const place = (id, kind, side, q, r) => { units[id] = { id, kind, side, q, r, hp: STATS[kind].hp, acted: false }; tiles[key(q, r)].unitId = id; };
+  place("p-scout", "scout", "player", 0, 3);
+  place("p-def", "defender", "player", 1, 3);
+  place("e-atk", "attacker", "enemy", 0, -3);
+  place("e-def", "defender", "enemy", -1, -3);
+  S = { tiles, units, turn: 1, phase: "briefing", energy: { player: 55, enemy: 12 }, data: { player: 10, enemy: 6 }, selectedId: "p-scout", buildKind: null, inspect: key(0, 3), log: ["You start at the bottom (teal). The enemy starts at the top (crimson)."], flash: null, taught: false, script: [], scriptIndex: 0, winner: null, winReason: "", seq: 10, attention: null };
+}
 
-    function resize() {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-      const maxDim = Math.min(width, height) * 0.68;
-      const approxDiameter = (MAP_RADIUS * 2 + 1) * 1.75;
-      hexSize = Math.max(16, Math.min(40, maxDim / approxDiameter));
+function counts() {
+  const tiles = Object.values(S.tiles);
+  const goal = Math.ceil(tiles.length / 2);
+  return { total: tiles.length, goal, player: tiles.filter(t => t.owner === "player").length, enemy: tiles.filter(t => t.owner === "enemy").length };
+}
+function income(side) {
+  const owned = Object.values(S.tiles).filter(t => t.owner === side);
+  const relays = owned.filter(t => t.relay).length;
+  return { energy: 8 + 4 * owned.length + 12 * relays, data: 3 + 2 * relays };
+}
+function log(line) { S.log.unshift(line); S.log = S.log.slice(0, 8); }
+function flash(text) { S.flash = text; clearTimeout(flashTimer); flashTimer = setTimeout(() => { S.flash = null; draw(); }, 3600); }
+function reachable(unit) {
+  const out = []; const seen = new Set([key(unit.q, unit.r)]); let frontier = [{ q: unit.q, r: unit.r }];
+  for (let step = 0; step < STATS[unit.kind].move; step++) {
+    const next = [];
+    for (const pos of frontier) for (const [dq, dr] of DIRS) {
+      const q = pos.q + dq, r = pos.r + dr, k = key(q, r);
+      if (seen.has(k) || !S.tiles[k] || S.tiles[k].unitId) continue;
+      seen.add(k); out.push({ q, r }); next.push({ q, r });
     }
-    window.addEventListener('resize', resize);
-    resize();
-
-    function hexToPixel(q, r) {
-      const x = hexSize * (Math.sqrt(3) * q + Math.sqrt(3)/2 * r) + width / 2;
-      const y = hexSize * (3/2 * r) + height / 2;
-      return { x, y };
+    frontier = next;
+  }
+  return out;
+}
+function hints() {
+  const moves = [], attacks = [], threat = [], build = [];
+  if (S.phase === "play" && S.buildKind) for (const t of Object.values(S.tiles)) if (t.owner === "player" && !t.unitId) build.push(key(t.q, t.r));
+  const unit = S.selectedId && S.units[S.selectedId];
+  if (unit && (S.phase === "play" || S.phase === "briefing")) {
+    const st = STATS[unit.kind];
+    if (unit.side === "player" && !unit.acted && !S.buildKind) {
+      reachable(unit).forEach(p => moves.push(key(p.q, p.r)));
+      Object.values(S.units).forEach(o => { if (o.side === "enemy" && dist(unit, o) <= st.range) attacks.push(key(o.q, o.r)); });
     }
-
-    function pixelToHex(x, y) {
-      const q = (Math.sqrt(3)/3 * (x - width/2) - 1/3 * (y - height/2)) / hexSize;
-      const r = (2/3 * (y - height/2)) / hexSize;
-      return axialRound(q, r);
+    if (unit.side === "enemy") Object.values(S.tiles).forEach(t => { const d = dist(unit, t); if (d > 0 && d <= st.range) threat.push(key(t.q, t.r)); });
+  }
+  return { moves: new Set(moves), attacks: new Set(attacks), threat: new Set(threat), build: new Set(build) };
+}
+function landLine(side) { const c = counts(); return (side === "player" ? c.player : c.enemy) + " / " + c.goal; }
+function evaluate() {
+  const c = counts();
+  const pu = Object.values(S.units).filter(u => u.side === "player").length;
+  const eu = Object.values(S.units).filter(u => u.side === "enemy").length;
+  if (c.player >= c.goal && c.player > c.enemy) return { winner: "player", reason: "You hold " + c.player + " of " + c.total + " hexes — half the grid." };
+  if (c.enemy >= c.goal && c.enemy > c.player) return { winner: "enemy", reason: "The enemy holds " + c.enemy + " of " + c.total + " hexes." };
+  if (eu === 0 && c.enemy === 0) return { winner: "player", reason: "The enemy has no units and no land left." };
+  if (pu === 0 && c.player === 0) return { winner: "enemy", reason: "You have no units and no land left." };
+  return null;
+}
+function endIfWon() { const r = evaluate(); if (!r) return; S.phase = "end"; S.winner = r.winner; S.winReason = r.reason; S.script = []; S.buildKind = null; }
+function apply(intent) {
+  if (intent.kind === "spawn") {
+    const st = STATS[intent.unitKind], k = key(intent.q, intent.r), tile = S.tiles[k];
+    if (!tile || tile.unitId || S.energy.enemy < st.cost) return;
+    const id = "u" + (++S.seq);
+    S.units[id] = { id, kind: intent.unitKind, side: "enemy", q: intent.q, r: intent.r, hp: st.hp, acted: true };
+    S.energy.enemy -= st.cost; tile.unitId = id; S.attention = k;
+    log("Enemy deployed a " + st.name + " on their land.");
+    return;
+  }
+  const unit = S.units[intent.unitId]; if (!unit) return;
+  const st = STATS[unit.kind], yours = unit.side === "player", who = yours ? "Your" : "Enemy";
+  if (intent.kind === "attack") {
+    const target = S.units[intent.targetId]; if (!target) return;
+    unit.acted = true; const hp = target.hp - st.atk;
+    if (hp <= 0) {
+      delete S.units[target.id]; S.tiles[key(target.q, target.r)].unitId = null; S.attention = key(target.q, target.r);
+      log(who + " " + st.name + " destroyed " + (yours ? "their" : "your") + " " + STATS[target.kind].name + ". The hex is empty — step on it to take it.");
+    } else {
+      target.hp = hp; S.attention = key(target.q, target.r);
+      log(who + " " + st.name + " hit " + (yours ? "their" : "your") + " " + STATS[target.kind].name + " for " + st.atk + ". Health left: " + hp + ".");
     }
-
-    function axialRound(q, r) {
-      let x = q, z = r, y = -x - z;
-      let rx = Math.round(x), ry = Math.round(y), rz = Math.round(z);
-      const xd = Math.abs(rx - x), yd = Math.abs(ry - y), zd = Math.abs(rz - z);
-      if (xd > yd && xd > zd) rx = -ry - rz;
-      else if (yd > zd) ry = -rx - rz;
-      else rz = -rx - ry;
-      return { q: rx, r: rz };
+    return;
+  }
+  const tile = S.tiles[key(intent.q, intent.r)];
+  if (!tile || tile.unitId) return;
+  const prev = tile.owner;
+  S.tiles[key(unit.q, unit.r)].unitId = null;
+  unit.q = intent.q; unit.r = intent.r; unit.acted = true; tile.unitId = unit.id; tile.owner = unit.side;
+  S.attention = key(intent.q, intent.r);
+  if (prev === unit.side) log(who + " " + st.name + " repositioned on land they already hold.");
+  else if (prev === null) log(who + " " + st.name + " claimed open ground. " + (yours ? "You hold " : "They hold ") + landLine(unit.side) + ".");
+  else log(who + " " + st.name + " captured " + (prev === "player" ? "your" : "enemy") + " land. " + (yours ? "You hold " : "They hold ") + landLine(unit.side) + ".");
+}
+function nearest(pos, points) { return points.length ? Math.min(...points.map(p => dist(pos, p))) : 99; }
+function chooseIntent(id) {
+  const unit = S.units[id]; if (!unit || unit.acted || unit.side !== "enemy") return null;
+  const st = STATS[unit.kind];
+  const foes = Object.values(S.units).filter(u => u.side === "player" && dist(unit, u) <= st.range).sort((a, b) => a.hp - b.hp);
+  if (foes.length) return { kind: "attack", unitId: id, targetId: foes[0].id };
+  const moves = reachable(unit); if (!moves.length) return null;
+  const players = Object.values(S.units).filter(u => u.side === "player");
+  const goals = players.length ? players : Object.values(S.tiles).filter(t => t.owner === "player");
+  const cur = nearest(unit, goals); let best = null, bestScore = 4;
+  for (const pos of moves) {
+    const tile = S.tiles[key(pos.q, pos.r)];
+    let score = (cur - nearest(pos, goals)) * 5;
+    if (tile.owner !== "enemy") score += 12;
+    if (tile.relay && tile.owner !== "enemy") score += 10;
+    if (tile.owner === "player") score += 3;
+    if (score > bestScore) { bestScore = score; best = pos; }
+  }
+  return best ? { kind: "move", unitId: id, q: best.q, r: best.r } : null;
+}
+function chooseSpawn() {
+  if (Object.values(S.units).filter(u => u.side === "enemy").length >= 5) return null;
+  let pick = null;
+  for (const kind of ["attacker", "defender", "scout"]) if (S.energy.enemy >= STATS[kind].cost) { pick = kind; break; }
+  if (!pick) return null;
+  const spots = Object.values(S.tiles).filter(t => t.owner === "enemy" && !t.unitId);
+  if (!spots.length) return null;
+  const goals = Object.values(S.units).filter(u => u.side === "player");
+  spots.sort((a, b) => nearest(a, goals) - nearest(b, goals));
+  return { kind: "spawn", unitKind: pick, q: spots[0].q, r: spots[0].r };
+}
+function scriptEnemy() {
+  const intents = [];
+  const ids = Object.values(S.units).filter(u => u.side === "enemy").sort((a, b) => a.r - b.r || a.q - b.q).map(u => u.id);
+  const snap = JSON.parse(JSON.stringify(S));
+  for (const id of ids) {
+    const intent = chooseIntent(id);
+    if (!intent) continue;
+    intents.push(intent); apply(intent);
+  }
+  const spawn = chooseSpawn();
+  if (spawn) intents.push(spawn);
+  S.tiles = snap.tiles; S.units = snap.units; S.energy = snap.energy; S.data = snap.data; S.log = snap.log; S.seq = snap.seq; S.attention = snap.attention;
+  return intents;
+}
+function finishRound() {
+  const p = income("player"), e = income("enemy");
+  Object.values(S.units).forEach(u => { u.acted = false; });
+  S.phase = "play"; S.turn++; S.script = []; S.scriptIndex = 0; S.attention = null;
+  S.energy.player += p.energy; S.energy.enemy += e.energy; S.data.player += p.data; S.data.enemy += e.data;
+  log("Turn " + S.turn + ". You gained " + p.energy + " Energy and " + p.data + " Data. Enemy gained " + e.energy + " Energy.");
+  endIfWon();
+}
+function advance() {
+  if (S.phase !== "enemy") return;
+  if (S.scriptIndex >= S.script.length) { finishRound(); draw(); return; }
+  apply(S.script[S.scriptIndex]); S.scriptIndex++;
+  const won = evaluate();
+  if (won && won.winner === "enemy") { S.phase = "end"; S.winner = "enemy"; S.winReason = won.reason; S.script = []; }
+  draw();
+  if (S.phase === "enemy") enemyTimer = setTimeout(advance, S.scriptIndex >= S.script.length ? 640 : 820);
+}
+function describe(tile) {
+  if (tile.unitId && S.units[tile.unitId]) return STATS[S.units[tile.unitId].kind].name + " is standing here. Tap the unit to select it.";
+  const relay = tile.relay ? " Gold relay: +12 Energy and +2 Data each turn, on top of normal land pay." : "";
+  if (tile.owner === "player") return "Your land, empty. Pick a unit below, then tap this hex to deploy." + relay;
+  if (tile.owner === "enemy") return "Enemy land. Walk a unit onto it to take it." + relay;
+  return "Open ground. Nobody is paid for it until a unit steps here." + relay;
+}
+function instruction() {
+  if (S.phase === "briefing") return "The map behind this card is the real board. Teal at the bottom is you.";
+  if (S.phase === "end") return S.winReason;
+  if (S.phase === "enemy") return S.script.length ? "Enemy turn — watch the map. You can't give orders until they finish." : "The enemy holds position. Collecting pay next…";
+  const mine = Object.values(S.units).filter(u => u.side === "player");
+  if (!mine.length) return "All your units are gone. If you still hold teal land and have Energy, deploy a replacement.";
+  if (S.buildKind) return "Deploying " + STATS[S.buildKind].name + " for " + STATS[S.buildKind].cost + " Energy. Tap an empty teal hex. Tap the button again to cancel.";
+  const unit = S.selectedId && S.units[S.selectedId];
+  if (unit) {
+    const st = STATS[unit.kind];
+    if (unit.side === "enemy") return "Enemy " + st.name + ": " + st.atk + " damage, up to " + st.range + " hex" + (st.range > 1 ? "es" : "") + " away. The crimson wash is that reach. Tap one of your units to act.";
+    if (unit.acted) {
+      const ready = mine.filter(u => !u.acted).length;
+      return ready ? st.name + " already acted. " + ready + " of yours can still move, attack, or repair." : st.name + " is done. So is every other unit. End the turn — you get paid, then the enemy moves.";
     }
-
-    function hexDistance(a, b) {
-      return Math.max(Math.abs(a.q - b.q), Math.abs(a.r - b.r), Math.abs(a.q + a.r - b.q - b.r));
+    if (!S.taught) return st.name + " is selected. Tap a bright hex to walk there. Grey or crimson ground becomes yours.";
+    return hints().attacks.size ? st.name + " is ready. Bright hex: move. Red hex: attack for " + st.atk + ". One action." : st.name + " is ready. Bright hexes are moves. No enemy is close enough to hit.";
+  }
+  if (!S.taught) return "You are teal, at the bottom. Tap your Scout — the arrow — then tap a bright hex.";
+  const ready = mine.filter(u => !u.acted).length;
+  return ready ? ready + " unit" + (ready > 1 ? "s" : "") + " can still act. Tap one. Bright hexes are moves. Red hexes are attacks." : "Every unit has acted. End the turn to collect Energy and Data, then the enemy moves.";
+}
+function clickHex(q, r) {
+  if (S.phase === "briefing") { flash("Press Start. The bright hexes are where your Scout can walk."); draw(); return; }
+  if (S.phase !== "play") return;
+  const tile = S.tiles[key(q, r)]; if (!tile) return;
+  S.inspect = key(q, r);
+  if (S.buildKind) {
+    if (tile.unitId && S.units[tile.unitId] && S.units[tile.unitId].side === "player") { S.selectedId = tile.unitId; S.buildKind = null; draw(); return; }
+    const st = STATS[S.buildKind];
+    if (S.energy.player < st.cost) { flash(st.name + " costs " + st.cost + " Energy. You have " + S.energy.player + ". Ending the turn pays you " + income("player").energy + "."); draw(); return; }
+    if (tile.owner !== "player") { flash("You can only deploy on your own teal hexes. Step onto this one first, then build."); draw(); return; }
+    if (tile.unitId) { flash("A unit is already standing there. Pick an empty teal hex."); draw(); return; }
+    const id = "u" + (++S.seq);
+    S.units[id] = { id, kind: S.buildKind, side: "player", q, r, hp: st.hp, acted: false };
+    S.energy.player -= st.cost; tile.unitId = id; S.selectedId = id; S.buildKind = null; S.attention = key(q, r);
+    log("Deployed a " + st.name + ". It can still act this turn. Energy left: " + S.energy.player + ".");
+    draw(); return;
+  }
+  const selected = S.selectedId && S.units[S.selectedId];
+  if (selected && selected.side === "player" && !selected.acted) {
+    const occ = tile.unitId && S.units[tile.unitId];
+    if (occ && occ.side === "enemy") {
+      if (dist(selected, occ) <= STATS[selected.kind].range) { apply({ kind: "attack", unitId: selected.id, targetId: occ.id }); S.taught = true; endIfWon(); draw(); return; }
+      flash("Too far. " + STATS[selected.kind].name + " only hits " + STATS[selected.kind].range + " hex" + (STATS[selected.kind].range > 1 ? "es" : "") + " away. Move closer — or use Artillery, which hits 2.");
+      draw(); return;
     }
-
-    function drawHex(x, y, size, fill, stroke, glow = 0) {
-      ctx.save();
-      if (glow > 0) {
-        ctx.shadowColor = stroke;
-        ctx.shadowBlur = glow;
-      }
-      ctx.beginPath();
-      for (let i = 0; i < 6; i++) {
-        const angle = Math.PI / 3 * i - Math.PI / 6;
-        const hx = x + size * Math.cos(angle);
-        const hy = y + size * Math.sin(angle);
-        if (i === 0) ctx.moveTo(hx, hy);
-        else ctx.lineTo(hx, hy);
-      }
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-      ctx.strokeStyle = stroke;
-      ctx.lineWidth = Math.max(1.2, size * 0.05);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    const UNIT_STATS = {
-      scout: { cost: 25, hp: 50, atk: 15, range: 1, move: 2, color: '#00ffaa' },
-      defender: { cost: 40, hp: 120, atk: 10, range: 1, move: 1, color: '#00ccff' },
-      attacker: { cost: 60, hp: 80, atk: 30, range: 1, move: 1, color: '#ffaa00' },
-      artillery: { cost: 80, hp: 60, atk: 40, range: 2, move: 1, color: '#ff66aa' }
+    if (occ && occ.side === "player") { S.selectedId = occ.id; draw(); return; }
+    if (reachable(selected).some(p => p.q === q && p.r === r)) { apply({ kind: "move", unitId: selected.id, q, r }); S.taught = true; endIfWon(); draw(); return; }
+    flash(STATS[selected.kind].name + " can't reach that. It walks " + STATS[selected.kind].move + " hex" + (STATS[selected.kind].move > 1 ? "es" : "") + ", and only the bright hexes are legal.");
+    draw(); return;
+  }
+  if (tile.unitId) { S.selectedId = tile.unitId; draw(); return; }
+  S.selectedId = null; flash(describe(tile)); draw();
+}
+function build(kind) {
+  if (S.phase === "briefing") { flash("Press Start on the brief first. You are the teal at the bottom."); draw(); return; }
+  if (S.phase !== "play") return;
+  if (S.buildKind === kind) { S.buildKind = null; draw(); return; }
+  const st = STATS[kind];
+  if (S.energy.player < st.cost) { flash(st.name + " costs " + st.cost + " Energy. You have " + S.energy.player + ". End the turn to collect " + income("player").energy + "."); draw(); return; }
+  if (!Object.values(S.tiles).some(t => t.owner === "player" && !t.unitId)) { flash("No empty teal hex. Move a unit off your land, or capture a new hex first."); draw(); return; }
+  S.buildKind = kind; S.selectedId = null; draw();
+}
+function repair() {
+  if (S.phase !== "play") return;
+  const unit = S.selectedId && S.units[S.selectedId];
+  if (!unit || unit.side !== "player") { flash("Select one of your damaged units first."); draw(); return; }
+  if (unit.acted) { flash("That unit already acted. Repair uses its action."); draw(); return; }
+  if (unit.hp >= STATS[unit.kind].hp) { flash("Already at full health."); draw(); return; }
+  if (S.data.player < REPAIR_COST) { flash("Repair costs " + REPAIR_COST + " Data. You have " + S.data.player + "."); draw(); return; }
+  const hp = Math.min(STATS[unit.kind].hp, unit.hp + REPAIR_HEAL);
+  const gained = hp - unit.hp;
+  unit.hp = hp; unit.acted = true; S.data.player -= REPAIR_COST; S.attention = key(unit.q, unit.r);
+  log("Repaired " + STATS[unit.kind].name + " to " + hp + " health. Data left: " + S.data.player + ".");
+  draw();
+}
+function endTurn() {
+  if (S.phase !== "play") return;
+  endIfWon(); if (S.phase === "end") { draw(); return; }
+  S.phase = "enemy"; S.buildKind = null; S.script = scriptEnemy(); S.scriptIndex = 0; draw();
+  clearTimeout(enemyTimer); enemyTimer = setTimeout(advance, 820);
+}
+function corners(x, y, s) {
+  let pts = "";
+  for (let i = 0; i < 6; i++) { const a = Math.PI / 3 * i - Math.PI / 6; pts += (x + s * Math.cos(a)) + "," + (y + s * Math.sin(a)) + " "; }
+  return pts;
+}
+function shape(kind, x, y, color) {
+  const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  g.setAttribute("transform", "translate(" + (x - 11) + " " + (y - 14) + ") scale(0.69)");
+  g.setAttribute("fill", color); g.setAttribute("stroke", color);
+  const add = (tag, attrs) => { const n = document.createElementNS("http://www.w3.org/2000/svg", tag); for (const k in attrs) n.setAttribute(k, attrs[k]); g.appendChild(n); };
+  if (kind === "scout") add("polygon", { points: "16,3 29,28 3,28" });
+  else if (kind === "defender") add("path", { d: "M16 2 L28 8 V16 C28 24 16 30 16 30 C16 30 4 24 4 16 V8 Z" });
+  else if (kind === "attacker") add("polygon", { points: "16,1 19.5,12.5 31,16 19.5,19.5 16,31 12.5,19.5 1,16 12.5,12.5" });
+  else { add("circle", { cx: 16, cy: 16, r: 8, fill: "none", "stroke-width": 3 }); add("circle", { cx: 16, cy: 16, r: 2.5 }); add("path", { d: "M16 1.5 V7 M16 25 V30.5 M1.5 16 H7 M25 16 H30.5", fill: "none", "stroke-width": 2.4, "stroke-linecap": "round" }); }
+  return g;
+}
+function drawBoard() {
+  const svg = document.getElementById("board");
+  svg.replaceChildren();
+  const tiles = Object.values(S.tiles);
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  tiles.forEach(t => { const p = pix(t.q, t.r); minX = Math.min(minX, p.x - SIZE); minY = Math.min(minY, p.y - SIZE); maxX = Math.max(maxX, p.x + SIZE); maxY = Math.max(maxY, p.y + SIZE); });
+  const pad = SIZE * 1.15;
+  svg.setAttribute("viewBox", (minX - pad) + " " + (minY - pad) + " " + (maxX - minX + pad * 2) + " " + (maxY - minY + pad * 2));
+  const label = (text, y, fill) => { const n = document.createElementNS("http://www.w3.org/2000/svg", "text"); n.setAttribute("x", (minX + maxX) / 2); n.setAttribute("y", y); n.setAttribute("text-anchor", "middle"); n.setAttribute("fill", fill); n.setAttribute("font-size", SIZE * 0.55); n.setAttribute("font-family", "Oswald, sans-serif"); n.setAttribute("letter-spacing", "0.14em"); n.textContent = text; svg.appendChild(n); };
+  label("ENEMY", minY - SIZE * 0.25, "var(--enemy)");
+  label("YOU", maxY + SIZE * 0.72, "var(--player)");
+  const h = hints();
+  tiles.forEach(tile => {
+    const k = key(tile.q, tile.r), p = pix(tile.q, tile.r);
+    const selected = S.selectedId && tile.unitId === S.selectedId;
+    let fill = "var(--neutral)", stroke = "var(--line)";
+    if (tile.owner === "player") { fill = "var(--player-dim)"; stroke = "var(--player)"; }
+    else if (tile.owner === "enemy") { fill = "var(--enemy-dim)"; stroke = "var(--enemy)"; }
+    if (selected || S.attention === k) stroke = "var(--fg)";
+    const poly = (pts, f, s, w, cls, op) => {
+      const n = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      n.setAttribute("points", pts); n.setAttribute("fill", f); if (s) n.setAttribute("stroke", s); if (w) n.setAttribute("stroke-width", w);
+      if (op) n.setAttribute("fill-opacity", op); if (cls) n.setAttribute("class", cls); n.style.pointerEvents = "none"; return n;
     };
-
-    const map = {};
-    const units = [];
-    let selected = null;
-    let turn = 1;
-    let energy = 150;
-    let data = 40;
-    let playerTerritory = 0;
-
-    function initMap() {
-      for (let q = -MAP_RADIUS; q <= MAP_RADIUS; q++) {
-        for (let r = -MAP_RADIUS; r <= MAP_RADIUS; r++) {
-          if (Math.abs(q + r) <= MAP_RADIUS) {
-            const key = `${q},${r}`;
-            const dist = Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r));
-            let owner = null;
-            if (dist < 2) owner = 'player';
-            else if (dist > 7 && Math.random() > 0.6) owner = 'ai';
-            map[key] = {
-              q, r,
-              owner,
-              type: Math.random() > 0.85 ? 'resource' : 'plain',
-              unit: null
-            };
-            if (owner === 'player') playerTerritory++;
-          }
-        }
-      }
-      spawnUnitAt('scout', 0, 0, 'player');
-      spawnUnitAt('defender', 1, 0, 'player');
-      spawnUnitAt('attacker', 6, -2, 'ai');
-      spawnUnitAt('defender', 5, 1, 'ai');
+    const base = poly(corners(p.x, p.y, SIZE * 0.92), fill, stroke, selected ? 2.6 : 1.4);
+    base.style.pointerEvents = "auto"; base.style.cursor = "pointer";
+    base.addEventListener("click", () => clickHex(tile.q, tile.r));
+    svg.appendChild(base);
+    if (h.moves.has(k)) svg.appendChild(poly(corners(p.x, p.y, SIZE * 0.72), "var(--player)", "var(--player)", 1.6, "hint", 0.4));
+    if (h.attacks.has(k)) svg.appendChild(poly(corners(p.x, p.y, SIZE * 0.72), "var(--enemy)", "var(--enemy)", 1.8, "hint", 0.45));
+    else if (h.threat.has(k)) svg.appendChild(poly(corners(p.x, p.y, SIZE * 0.72), "var(--enemy)", "var(--enemy)", 1.2, "", 0.16));
+    if (h.build.has(k)) svg.appendChild(poly(corners(p.x, p.y, SIZE * 0.72), "var(--gold)", "var(--gold)", 1.6, "hint", 0.3));
+    if (tile.relay) {
+      const dy = tile.unitId ? SIZE * 0.5 : 0;
+      svg.appendChild(poly((p.x) + "," + (p.y - 8 - dy) + " " + (p.x + 6) + "," + (p.y - dy) + " " + (p.x) + "," + (p.y + 8 - dy) + " " + (p.x - 6) + "," + (p.y - dy), "var(--gold)"));
     }
-
-    function spawnUnitAt(type, q, r, owner) {
-      const key = `${q},${r}`;
-      if (!map[key] || map[key].unit) return false;
-      const stats = UNIT_STATS[type];
-      const unit = {
-        type, q, r, owner,
-        hp: stats.hp, maxHp: stats.hp,
-        atk: stats.atk, range: stats.range, move: stats.move,
-        moved: false
-      };
-      units.push(unit);
-      map[key].unit = unit;
-      return true;
-    }
-
-    function log(msg) {
-      const el = document.getElementById('log');
-      el.innerHTML = `<div>${msg}</div>` + el.innerHTML;
-    }
-
-    function updateHUD() {
-      document.getElementById('energy').textContent = energy;
-      document.getElementById('data').textContent = data;
-      document.getElementById('turn').textContent = turn;
-      document.getElementById('territory').textContent = playerTerritory;
-      document.getElementById('units').textContent = units.filter(u => u.owner === 'player').length;
-    }
-
-    function spawnUnit(type) {
-      const stats = UNIT_STATS[type];
-      if (energy < stats.cost) return log('Not enough Energy');
-      for (const key in map) {
-        const tile = map[key];
-        if (tile.owner === 'player' && !tile.unit) {
-          energy -= stats.cost;
-          spawnUnitAt(type, tile.q, tile.r, 'player');
-          log(`Deployed ${type}`);
-          updateHUD();
-          return;
-        }
-      }
-      log('No free territory for deployment');
-    }
-
-    function endTurn() {
-      energy += 20 + Math.floor(playerTerritory * 1.5);
-      data += 3 + Math.floor(playerTerritory / 4);
-      units.forEach(u => { if (u.owner === 'player') u.moved = false; });
-      turn++;
-      aiTurn();
-      log(`Turn ${turn}. +Energy from territory`);
-      updateHUD();
-      checkVictory();
-    }
-
-    function aiTurn() {
-      const aiUnits = units.filter(u => u.owner === 'ai');
-      aiUnits.forEach(u => {
-        for (const key in map) {
-          const tile = map[key];
-          if (tile.unit && tile.unit.owner === 'player') {
-            const dist = hexDistance(u, tile);
-            if (dist <= u.range) {
-              resolveCombat(u, tile.unit);
-              return;
-            }
-          }
-        }
-        const neighbors = getNeighbors(u.q, u.r);
-        for (const n of neighbors) {
-          const key = `${n.q},${n.r}`;
-          const tile = map[key];
-          if (tile && !tile.unit && (!tile.owner || tile.owner === 'ai')) {
-            map[`${u.q},${u.r}`].unit = null;
-            u.q = n.q; u.r = n.r;
-            tile.unit = u;
-            if (!tile.owner) tile.owner = 'ai';
-            return;
-          }
-        }
-      });
-      if (Math.random() > 0.6) {
-        for (const key in map) {
-          const tile = map[key];
-          if (tile.owner === 'ai' && !tile.unit) {
-            spawnUnitAt(Math.random() > 0.5 ? 'attacker' : 'defender', tile.q, tile.r, 'ai');
-            break;
-          }
-        }
-      }
-    }
-
-    function getNeighbors(q, r) {
-      const dirs = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
-      return dirs.map(([dq, dr]) => ({ q: q + dq, r: r + dr }));
-    }
-
-    function resolveCombat(attacker, defender) {
-      const dmg = Math.max(5, attacker.atk - Math.floor(Math.random() * 10));
-      defender.hp -= dmg;
-      log(`${attacker.owner} ${attacker.type} hits for ${dmg}`);
-      if (defender.hp <= 0) {
-        const idx = units.indexOf(defender);
-        if (idx > -1) units.splice(idx, 1);
-        const key = `${defender.q},${defender.r}`;
-        map[key].unit = null;
-        if (map[key].owner === 'player') {
-          playerTerritory--;
-          map[key].owner = null;
-        }
-        log(`${defender.type} destroyed`);
-      }
-    }
-
-    function checkVictory() {
-      const playerTiles = Object.values(map).filter(t => t.owner === 'player').length;
-      const total = Object.keys(map).length;
-      if (playerTiles > total * 0.55) {
-        log('VICTORY — You dominate the grid!');
-        alert('Victory! You control the majority of the grid.');
-      }
-      if (units.filter(u => u.owner === 'ai').length === 0 && playerTiles > 10) {
-        log('Enemy forces eliminated!');
-      }
-    }
-
-    function render() {
-      ctx.fillStyle = '#05070a';
-      ctx.fillRect(0, 0, width, height);
-
-      const g = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, Math.max(width, height) * 0.55);
-      g.addColorStop(0, 'rgba(0, 70, 110, 0.12)');
-      g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, width, height);
-
-      for (const key in map) {
-        const tile = map[key];
-        const { x, y } = hexToPixel(tile.q, tile.r);
-        let fill = '#0c1420';
-        let stroke = 'rgba(0, 170, 210, 0.35)';
-        let glow = 0;
-
-        if (tile.owner === 'player') {
-          fill = '#0a3545';
-          stroke = '#00e5ff';
-          glow = Math.min(10, hexSize * 0.25);
-        } else if (tile.owner === 'ai') {
-          fill = '#351018';
-          stroke = '#ff4466';
-          glow = Math.min(9, hexSize * 0.22);
-        } else if (tile.type === 'resource') {
-          fill = '#181430';
-          stroke = '#aa66ff';
-          glow = Math.min(7, hexSize * 0.18);
-        }
-
-        if (selected && selected.q === tile.q && selected.r === tile.r) {
-          stroke = '#ffffff';
-          glow = Math.min(16, hexSize * 0.4);
-        }
-
-        drawHex(x, y, hexSize * 0.9, fill, stroke, glow);
-      }
-
-      units.forEach(u => {
-        const { x, y } = hexToPixel(u.q, u.r);
-        const r = hexSize * 0.36;
-        const stats = UNIT_STATS[u.type];
-        ctx.save();
-        ctx.shadowColor = stats.color;
-        ctx.shadowBlur = Math.min(12, hexSize * 0.35);
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fillStyle = stats.color;
-        ctx.fill();
-        ctx.restore();
-
-        const hpPct = u.hp / u.maxHp;
-        ctx.fillStyle = '#222';
-        ctx.fillRect(x - r, y + r + 2, r * 2, 3);
-        ctx.fillStyle = hpPct > 0.5 ? '#0f0' : '#f44';
-        ctx.fillRect(x - r, y + r + 2, r * 2 * hpPct, 3);
-
-        ctx.fillStyle = '#000';
-        ctx.font = `bold ${Math.max(9, hexSize * 0.28)}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(u.type[0].toUpperCase(), x, y);
-      });
-
-      requestAnimationFrame(render);
-    }
-
-    canvas.addEventListener('click', e => {
-      const rect = canvas.getBoundingClientRect();
-      const hex = pixelToHex(e.clientX - rect.left, e.clientY - rect.top);
-      const key = `${hex.q},${hex.r}`;
-      const tile = map[key];
-      if (!tile) return;
-
-      if (tile.unit && tile.unit.owner === 'player') {
-        selected = tile.unit;
-        log(`Selected ${tile.unit.type} (HP ${tile.unit.hp})`);
-      } else if (selected && !selected.moved) {
-        const dist = hexDistance(selected, hex);
-        if (tile.unit && tile.unit.owner === 'ai' && dist <= selected.range) {
-          resolveCombat(selected, tile.unit);
-          selected.moved = true;
-          selected = null;
-          updateHUD();
-        } else if (dist <= selected.move && !tile.unit) {
-          map[`${selected.q},${selected.r}`].unit = null;
-          selected.q = hex.q;
-          selected.r = hex.r;
-          tile.unit = selected;
-          if (!tile.owner) {
-            tile.owner = 'player';
-            playerTerritory++;
-            log('Territory captured');
-          }
-          selected.moved = true;
-          selected = null;
-          updateHUD();
-        }
-      }
-    });
-
-    const trailer = document.getElementById('trailer');
-    function startGame() {
-      trailer.classList.add('hidden');
-      setTimeout(() => trailer.style.display = 'none', 700);
-      initMap();
-      updateHUD();
-      log('T3x Dominion — Expand, fight, dominate.');
-      render();
-    }
-    trailer.addEventListener('click', startGame);
-    window.addEventListener('keydown', startGame);
-    setTimeout(() => {
-      if (!trailer.classList.contains('hidden')) startGame();
-    }, 5000);
-  </script>
+  });
+  Object.values(S.units).forEach(unit => {
+    const p = pix(unit.q, unit.r), full = STATS[unit.kind].hp, pct = Math.max(0, Math.min(1, unit.hp / full));
+    const color = unit.side === "player" ? "var(--player)" : "var(--enemy)";
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.style.cursor = "pointer";
+    if (unit.acted && unit.side === "player" && S.phase === "play") g.setAttribute("opacity", "0.7");
+    g.appendChild(shape(unit.kind, p.x, p.y, color));
+    const bar = (w, c) => { const r = document.createElementNS("http://www.w3.org/2000/svg", "rect"); r.setAttribute("x", p.x - 11); r.setAttribute("y", p.y + 10); r.setAttribute("width", w); r.setAttribute("height", 3.4); r.setAttribute("rx", 1); r.setAttribute("fill", c); return r; };
+    g.appendChild(bar(22, "var(--bg)")); g.appendChild(bar(22 * pct, pct > 0.35 ? color : "var(--enemy)"));
+    g.addEventListener("click", () => clickHex(unit.q, unit.r));
+    svg.appendChild(g);
+  });
+}
+function readout() {
+  const el = document.getElementById("read");
+  const unit = S.selectedId && S.units[S.selectedId];
+  if (unit) {
+    const st = STATS[unit.kind], yours = unit.side === "player", tile = S.tiles[key(unit.q, unit.r)];
+    const hurt = yours && unit.hp < st.hp;
+    el.innerHTML = "<b>" + (yours ? "Your " : "Enemy ") + st.name + "</b><div class='muted'>" + (unit.acted && yours ? "Already acted this turn" : yours ? "Ready" : "Not yours to order") + "</div><p>" + st.role + "</p><div>Health " + unit.hp + " / " + st.hp + " · Damage " + st.atk + "<br>Walks " + st.move + " · Hits up to " + st.range + " away</div>" + (tile && tile.relay ? "<div style='color:var(--gold)'>Standing on a relay.</div>" : "") + (hurt ? "<button id='repairBtn' class='unitbtn' style='width:100%;margin-top:8px' type='button'>Repair +" + Math.min(REPAIR_HEAL, st.hp - unit.hp) + " health · " + REPAIR_COST + " Data<br><span class='muted'>Uses this unit’s action. Data is only for this.</span></button>" : "");
+    const b = document.getElementById("repairBtn"); if (b) b.onclick = repair;
+    return;
+  }
+  const tile = S.inspect && S.tiles[S.inspect];
+  el.textContent = tile ? describe(tile) : "Tap the map. Units, empty land, and relays all explain themselves.";
+}
+function draw() {
+  const c = counts(), pay = income("player"), mine = Object.values(S.units).filter(u => u.side === "player"), ready = mine.filter(u => !u.acted).length;
+  document.getElementById("turnline").textContent = "Turn " + S.turn + " · Futuret3Ch";
+  document.getElementById("youScore").textContent = "You " + c.player + " / " + c.goal;
+  document.getElementById("themScore").textContent = "Enemy " + c.enemy + " / " + c.goal;
+  document.getElementById("youBar").style.width = Math.min(100, c.player / c.goal * 100) + "%";
+  document.getElementById("themBar").style.width = Math.min(100, c.enemy / c.goal * 100) + "%";
+  const say = document.getElementById("say");
+  say.textContent = S.flash || instruction();
+  say.className = "say" + (S.flash ? " flash" : "");
+  document.getElementById("energy").textContent = S.energy.player;
+  document.getElementById("data").textContent = S.data.player;
+  document.getElementById("energyNext").textContent = "+" + pay.energy + " at end of turn";
+  document.getElementById("dataNext").textContent = "+" + pay.data + " at end of turn";
+  document.getElementById("brief").hidden = S.phase !== "briefing";
+  document.getElementById("banner").hidden = S.phase !== "enemy";
+  document.getElementById("dock").style.display = (S.phase === "briefing" && innerWidth < 960) ? "none" : "";
+  const end = document.getElementById("endBtn"), title = document.getElementById("endTitle"), sub = document.getElementById("endSub");
+  end.disabled = S.phase !== "play";
+  if (S.phase === "briefing") { title.textContent = "Waiting to start"; sub.textContent = "Press Start. You are teal, at the bottom."; }
+  else if (S.phase === "end") { title.textContent = S.winner === "player" ? "You hold the grid" : "Operation over"; sub.textContent = S.winReason; end.disabled = false; end.onclick = () => { create(); draw(); }; }
+  else if (S.phase === "enemy") { title.textContent = "Enemy is moving"; sub.textContent = "Your orders resume after they finish."; end.onclick = endTurn; }
+  else { title.textContent = "End turn"; sub.textContent = ready ? ready + " unit" + (ready > 1 ? "s" : "") + " can still act. Then you collect " + pay.energy + " Energy." : "Collect " + pay.energy + " Energy and " + pay.data + " Data."; end.onclick = endTurn; }
+  const builds = document.getElementById("builds"); builds.replaceChildren();
+  KINDS.forEach(kind => {
+    const st = STATS[kind], b = document.createElement("button");
+    b.type = "button"; b.className = "unitbtn" + (S.buildKind === kind ? " on" : "");
+    b.disabled = S.phase === "enemy" || S.phase === "end";
+    b.innerHTML = "<b>" + st.name + "</b><span style='color:var(--gold)'>" + st.cost + " Energy</span><span class='muted' style='display:block'>" + st.short + "</span>";
+    b.onclick = () => build(kind); builds.appendChild(b);
+  });
+  document.getElementById("log").innerHTML = S.log.slice(0, 3).map(l => "<li>" + l.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</li>").join("");
+  readout();
+  drawBoard();
+  if (S.phase === "end" && !document.getElementById("endCard")) {
+    const wrap = document.createElement("div"); wrap.className = "brief"; wrap.id = "endCard";
+    wrap.innerHTML = "<article class='card'><div class='kicker'>" + (S.winner === "player" ? "You hold the grid" : "The grid fell") + "</div><h2>" + (S.winner === "player" ? "Dominion is yours" : "Operation over") + "</h2><p>" + S.winReason + "</p>" + (S.winner === "player" ? "" : "<p class='muted'>Next time, put a Defender on a relay, and keep Artillery one hex behind your line. It shoots 2 hexes.</p>") + "<button class='go' id='again' type='button'>Play again</button></article>";
+    document.getElementById("boardWrap").appendChild(wrap);
+    document.getElementById("again").onclick = () => { create(); S.phase = "play"; S.taught = true; draw(); };
+  }
+  if (S.phase !== "end") { const old = document.getElementById("endCard"); if (old) old.remove(); }
+}
+document.getElementById("startBtn").onclick = () => { S.phase = "play"; draw(); };
+document.getElementById("helpBtn").onclick = () => { document.getElementById("help").hidden = false; };
+document.getElementById("closeHelp").onclick = () => { document.getElementById("help").hidden = true; };
+document.getElementById("zoomBtn").onclick = () => {
+  const w = document.getElementById("boardWrap");
+  w.classList.toggle("zoom");
+  document.getElementById("zoomBtn").textContent = w.classList.contains("zoom") ? "See all" : "Bigger";
+};
+addEventListener("keydown", e => { if (e.key === "Escape") { S.buildKind = null; S.selectedId = null; draw(); } if (e.key === "Enter" && S.phase === "play") endTurn(); });
+create(); draw();
+</script>
 </body>
 </html>
